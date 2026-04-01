@@ -1,13 +1,11 @@
+export THEOS = /opt/theos
+TARGET := iphone:clang:latest:15.0
+ARCHS = arm64 arm64e
+
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = PUBGWeaponTweak
-PUBGWeaponTweak_FILES = Tweak.x
-PUBGWeaponTweak_FRAMEWORKS = Foundation
-PUBGWeaponTweak_LIBRARIES = substrate
+$(TWEAK_NAME)_FILES = Tweak.x
+$(TWEAK_NAME)_CFLAGS = -fobjc-arc
 
-include $(THEOS_MAKE_INSTANCE)/tweak.mk
-
-# Agar sizda o'yinning bundle ID si bo'lsa, uni bu yerga kiriting.
-# Masalan, PUBG Mobile uchun com.tencent.ig yoki com.pubg.mobile
-# Bu tweakni faqat shu ilovaga yuklashni ta'minlaydi.
-# PUBGWeaponTweak_BUNDLEID = com.tencent.ig
+include $(THEOS_MAKE_PATH)/tweak.mk
