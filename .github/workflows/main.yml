@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+env:
+  THEOS: /opt/theos
+
 jobs:
   build:
     runs-on: macos-latest
@@ -17,22 +20,21 @@ jobs:
       - name: Setup Theos
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          sudo rm -rf /opt/theos
-          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
-          sudo chown -R $(id -u):$(id -g) /opt/theos
-          # O'zgaruvchilarni butun tizimga tanitish
-          echo "THEOS=/opt/theos" >> $GITHUB_ENV
-          echo "/opt/theos/bin" >> $GITHUB_PATH
+          sudo rm -rf ${{ env.THEOS }}
+          sudo git clone --recursive https://github.com/theos/theos.git ${{ env.THEOS }}
+          sudo chown -R $(id -u):$(id -g) ${{ env.THEOS }}
+          # O'zgaruvchilarni tizimga doimiy yozish
+          echo "THEOS=${{ env.THEOS }}" >> $GITHUB_ENV
+          echo "${{ env.THEOS }}/bin" >> $GITHUB_PATH
 
       - name: Setup SDK
         run: |
-          # SDK yuklashda xatolik bo'lmasligi uchun rm -rf ishlatamiz
-          rm -rf /opt/theos/sdks
-          git clone https://github.com/theos/sdks.git /opt/theos/sdks
+          rm -rf ${{ env.THEOS }}/sdks
+          git clone https://github.com/theos/sdks.git ${{ env.THEOS }}/sdks
 
       - name: Build Tweak
         run: |
-          # Makefile ichidagi Tweak.x fayli mavjudligini Actions ko'rishi shart
+          # Makefile va Tweak.x orqali yig'ish
           make clean
           make package FINALPACKAGE=1
         env:
