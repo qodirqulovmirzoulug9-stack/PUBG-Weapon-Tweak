@@ -1,11 +1,11 @@
-export THEOS = /opt/theos
-TARGET := iphone:clang:latest:15.0
-ARCHS = arm64 arm64e
+ARCHS = arm64
+TARGET = iphone:clang:latest:14.0
+INSTALL_TARGET_PROCESSES = ShadowTrackerExtra
 
 include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = PUBGWeaponTweak
-$(TWEAK_NAME)_FILES = Tweak.x
-$(TWEAK_NAME)_CFLAGS = -fobjc-arc
+PUBGWeaponTweak_FILES = Tweak.x
+PUBGWeaponTweak_CFLAGS = -fobjc-arc -Wno-deprecated-declarations -Wno-unused-variable
 
 include $(THEOS_MAKE_PATH)/tweak.mk
