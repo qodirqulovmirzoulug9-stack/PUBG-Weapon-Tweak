@@ -17,24 +17,22 @@ jobs:
       - name: Setup Theos
         run: |
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          # Theosni o'rnatish
           sudo rm -rf /opt/theos
           sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
           sudo chown -R $(id -u):$(id -g) /opt/theos
-          
-          # O'zgaruvchilarni tizimga doimiy yozish
+          # O'zgaruvchilarni butun tizimga tanitish
           echo "THEOS=/opt/theos" >> $GITHUB_ENV
           echo "/opt/theos/bin" >> $GITHUB_PATH
 
       - name: Setup SDK
         run: |
-          # Bu yerda endi $THEOS o'zgaruvchisi ishlaydi
-          rm -rf ${{ env.THEOS }}/sdks
-          git clone https://github.com/theos/sdks.git ${{ env.THEOS }}/sdks
+          # SDK yuklashda xatolik bo'lmasligi uchun rm -rf ishlatamiz
+          rm -rf /opt/theos/sdks
+          git clone https://github.com/theos/sdks.git /opt/theos/sdks
 
       - name: Build Tweak
         run: |
-          # Makefile va Tweak.x orqali yig'ish
+          # Makefile ichidagi Tweak.x fayli mavjudligini Actions ko'rishi shart
           make clean
           make package FINALPACKAGE=1
         env:
@@ -43,5 +41,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PUBG-Weapon-Tweak
+          name: PUBG-Weapon-Tweak-Package
           path: packages/*.deb
