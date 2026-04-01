@@ -18,13 +18,13 @@ static uintptr_t _get_image_base_address() {
 float (*_original_GetShootIntervalFromEntity)(id self, SEL _cmd);
 float (*_original_GetBulletFireSpeedFromEntity)(id self, SEL _cmd);
 
-// 1. O'q otish intervalini hook qilish (2 barobar tezroq otish)
+// 1. O'q otish intervalini hook qilish
 float _hooked_GetShootIntervalFromEntity(id self, SEL _cmd) {
     float originalInterval = _original_GetShootIntervalFromEntity(self, _cmd);
     return originalInterval * 0.5f; 
 }
 
-// 2. O'q uchish tezligini hook qilish (1.5 barobar tezroq)
+// 2. O'q uchish tezligini hook qilish
 float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
     float originalSpeed = _original_GetBulletFireSpeedFromEntity(self, _cmd);
     return originalSpeed * 1.5f;
@@ -34,11 +34,8 @@ float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
     uintptr_t baseAddress = _get_image_base_address();
     
     if (baseAddress != 0) {
-        NSLog(@"[Tweak] PUBG ulanmoqda...");
-
-        [span_0](start_span)// Rasmlardan olingan haqiqiy offsetlar[span_0](end_span)
-        // GetShootIntervalFromEntity offset: 0x724968E
-        // GetBulletFireSpeedFromEntity offset: 0x724866B
+        // Loglarda chiqqan 'span_0' va 'start_span' xatolari bu qatorda noto'g'ri yozilgan koddan edi.
+        // Ularni olib tashlab, to'g'ri offsetlarni ulaymiz:
         
         MSHookFunction((void*)(baseAddress + 0x724968E), 
                        (void*)&_hooked_GetShootIntervalFromEntity, 
@@ -48,13 +45,31 @@ float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
                        (void*)&_hooked_GetBulletFireSpeedFromEntity, 
                        (void**)&_original_GetBulletFireSpeedFromEntity);
 
-        // Muvaffaqiyatli yuklanganini bildirish uchun xabar
+        // UIAlertController xatosini (keyWindow deprecated) tuzatish:
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Tweak Active" 
-                                        message:@"PUBG Tweak muvaffaqiyatli urildi!" 
-                                        preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-            [[[UIApplication sharedApplication] keyWindow].rootViewController presentViewController:alert animated:YES completion:nil];
+            UIWindow *window = nil;
+            if (@available(iOS 13.0, *)) {
+                for (UIWindowScene* windowScene in [UIApplication sharedApplication].connectedScenes) {
+                    if (windowScene.activationState == UISceneActivationStateForegroundActive) {
+                        for (UIWindow *w in windowScene.windows) {
+                            if (w.isKeyWindow) {
+                                window = w;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                window = [UIApplication sharedApplication].keyWindow;
+            }
+
+            if (window) {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Tweak Active" 
+                                            message:@"PUBG Tweak muvaffaqiyatli ishga tushdi!" 
+                                            preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+                [window.rootViewController presentViewController:alert animated:YES completion:nil];
+            }
         });
     }
 }
