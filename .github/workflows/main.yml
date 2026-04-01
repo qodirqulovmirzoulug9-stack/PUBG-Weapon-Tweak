@@ -31,8 +31,25 @@ jobs:
           rm -rf ${{ env.THEOS }}/sdks
           git clone https://github.com/theos/sdks.git ${{ env.THEOS }}/sdks
 
+      - name: Setup Substrate Header
+        run: |
+          # Substrate xatoligini yo'qotish uchun kerakli papka va faylni yaratamiz
+          mkdir -p ${{ env.THEOS }}/include/Substrate
+          curl -L https://raw.githubusercontent.com/theos/headers/master/CydiaSubstrate.h -o ${{ env.THEOS }}/include/Substrate/Substrate.h
+          # Qo'shimcha ravishda asosiy include papkasiga ham nusxa olamiz
+          cp ${{ env.THEOS }}/include/Substrate/Substrate.h ${{ env.THEOS }}/include/CydiaSubstrate.h
+
       - name: Build Tweak
         run: |
-          # Build qilishdan oldin hamma narsa joyidami tekshiramiz
+          export THEOS=/opt/theos
+          export PATH=$THEOS/bin:$PATH
           make clean
           make package FINALPACKAGE=1
+        env:
+          THEOS_DEVICE_IP: ""
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PUBG-Weapon-Tweak-Package
+          path: packages/*.deb
