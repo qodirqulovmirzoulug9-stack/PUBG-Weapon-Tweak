@@ -1,0 +1,41 @@
+name: build_tweak
+
+on:
+  workflow_dispatch: # Manuel ishga tushirish tugmasi
+  push:
+    branches:
+      - main # Main branchga kod yuklanganda avtomatik ishlaydi
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4 # v4 ga yangilandi
+
+      - name: Setup Theos
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          export THEOS=/opt/theos
+          sudo git clone --recursive https://github.com/theos/theos.git $THEOS
+          sudo chown -R $(id -u):$(id -g) $THEOS
+
+      - name: Setup SDK
+        run: |
+          # Theos uchun kerakli iOS SDK larni yuklab olish
+          git clone https://github.com/theos/sdks.git /opt/theos/sdks
+
+      - name: Build Tweak
+        run: |
+          export THEOS=/opt/theos
+          make clean
+          make package FINALPACKAGE=1
+        env:
+          THEOS_DEVICE_IP: ""
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4 # v4 ga yangilandi
+        with:
+          name: PUBG-Weapon-Tweak
+          path: packages/*.deb
