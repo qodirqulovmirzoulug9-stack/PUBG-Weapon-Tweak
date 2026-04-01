@@ -1,81 +1,27 @@
 #import <Foundation/Foundation.h>
 #import <Substrate/Substrate.h>
 #import <mach-o/dyld.h>
-#import <UIKit/UIKit.h>
 
-// O'yinning asosiy manzilini topish
-static uintptr_t _get_image_base_address() {
+static uintptr_t get_base() {
+    uintptr_t slide = _dyld_get_image_vmaddr_slide(0);
     for (uint32_t i = 0; i < _dyld_image_count(); i++) {
-        const char* name = _dyld_get_image_name(i);
-        if (strstr(name, "ShadowTrackerExtra")) {
+        if (strstr(_dyld_get_image_name(i), "ShadowTrackerExtra")) {
             return (uintptr_t)_dyld_get_image_vmaddr_slide(i);
         }
     }
-    return 0;
+    return slide;
 }
 
-// Original funksiyalar uchun pointerlar
-float (*_original_GetShootIntervalFromEntity)(id self, SEL _cmd);
-float (*_original_GetBulletFireSpeedFromEntity)(id self, SEL _cmd);
+float (*old_Shoot)(id self, SEL _cmd);
+float new_Shoot(id self, SEL _cmd) { return 0.05f; }
 
-// 1. O'q otish intervalini hook qilish (Tez otish)
-float _hooked_GetShootIntervalFromEntity(id self, SEL _cmd) {
-    if (_original_GetShootIntervalFromEntity) {
-        float originalInterval = _original_GetShootIntervalFromEntity(self, _cmd);
-        return originalInterval * 0.5f; 
-    }
-    return 0.05f;
-}
-
-// 2. O'q uchish tezligini hook qilish
-float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
-    if (_original_GetBulletFireSpeedFromEntity) {
-        float originalSpeed = _original_GetBulletFireSpeedFromEntity(self, _cmd);
-        return originalSpeed * 1.5f;
-    }
-    return 9999.0f;
-}
+float (*old_Bullet)(id self, SEL _cmd);
+float new_Bullet(id self, SEL _cmd) { return 9999.0f; }
 
 %ctor {
-    uintptr_t baseAddress = _get_image_base_address();
-    
-    if (baseAddress != 0) {
-        // Siz yuborgan rasmdagi aniq offsetlar
-        MSHookFunction((void*)(baseAddress + 0x724968E), 
-                       (void*)&_hooked_GetShootIntervalFromEntity, 
-                       (void**)&_original_GetShootIntervalFromEntity);
-
-        MSHookFunction((void*)(baseAddress + 0x724866B), 
-                       (void*)&_hooked_GetBulletFireSpeedFromEntity, 
-                       (void**)&_original_GetBulletFireSpeedFromEntity);
-
-        // Bildirishnoma (Alert) chiqarish - Eng xavfsiz va xatosiz usul
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            UIViewController *rootVC = nil;
-            UIWindow *window = nil;
-            
-            if (@available(iOS 13.0, *)) {
-                for (UIScene* scene in [UIApplication sharedApplication].connectedScenes) {
-                    if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
-                        window = ((UIWindowScene *)scene).windows.firstObject;
-                        break;
-                    }
-                }
-            }
-            
-            if (!window) {
-                window = [UIApplication sharedApplication].windows.firstObject;
-            }
-            
-            rootVC = window.rootViewController;
-
-            if (rootVC) {
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Tweak Holati" 
-                                            message:@"PUBG Tweak muvaffaqiyatli faollashtirildi!" 
-                                            preferredStyle:UIAlertControllerStyleAlert];
-                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-                [rootVC presentViewController:alert animated:YES completion:nil];
-            }
-        });
+    uintptr_t base = get_base();
+    if (base != 0) {
+        MSHookFunction((void*)(base + 0x724968E), (void*)&new_Shoot, (void**)&old_Shoot);
+        MSHookFunction((void*)(base + 0x724866B), (void*)&new_Bullet, (void**)&old_Bullet);
     }
 }
