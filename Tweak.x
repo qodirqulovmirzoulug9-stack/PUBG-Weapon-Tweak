@@ -1,11 +1,10 @@
 #import <Foundation/Foundation.h>
 #import <Substrate/Substrate.h>
 #import <mach-o/dyld.h>
-#import <UIKit/UIKit.h>
 
-// O'yinning asosiy manzilini topish
 static uintptr_t _get_image_base_address() {
-    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+    uint32_t count = _dyld_image_count();
+    for (uint32_t i = 0; i < count; i++) {
         const char* name = _dyld_get_image_name(i);
         if (strstr(name, "ShadowTrackerExtra")) {
             return (uintptr_t)_dyld_get_image_vmaddr_slide(i);
@@ -14,62 +13,39 @@ static uintptr_t _get_image_base_address() {
     return 0;
 }
 
-// Original funksiyalar uchun pointerlar
-float (*_original_GetShootIntervalFromEntity)(id self, SEL _cmd);
-float (*_original_GetBulletFireSpeedFromEntity)(id self, SEL _cmd);
+// Funksiyalar uchun pointerlar
+float (*_original_Shoot)(id self, SEL _cmd);
+float (*_original_Bullet)(id self, SEL _cmd);
+float (*_original_Damage)(id self, SEL _cmd);
 
-// 1. O'q otish intervalini hook qilish
-float _hooked_GetShootIntervalFromEntity(id self, SEL _cmd) {
-    float originalInterval = _original_GetShootIntervalFromEntity(self, _cmd);
-    return originalInterval * 0.5f; 
+// 1. Tez otish
+float _hooked_Shoot(id self, SEL _cmd) {
+    return 0.05f; 
 }
 
-// 2. O'q uchish tezligini hook qilish
-float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
-    float originalSpeed = _original_GetBulletFireSpeedFromEntity(self, _cmd);
-    return originalSpeed * 1.5f;
+// 2. O'q tezligi (Instant Hit)
+float _hooked_Bullet(id self, SEL _cmd) {
+    return 9999.0f;
+}
+
+// 3. KUCHAYTIRILGAN ZARAR (Damage)
+float _hooked_Damage(id self, SEL _cmd) {
+    // Bu yerda qurol zarari 2-3 barobar oshirilgan (yoki xohlagan raqamingizni yozing)
+    return 500.0f; 
 }
 
 %ctor {
-    uintptr_t baseAddress = _get_image_base_address();
-    
-    if (baseAddress != 0) {
-        // Loglarda chiqqan 'span_0' va 'start_span' xatolari bu qatorda noto'g'ri yozilgan koddan edi.
-        // Ularni olib tashlab, to'g'ri offsetlarni ulaymiz:
+    uintptr_t base = _get_image_base_address();
+    if (base != 0) {
+        // Tez otish offset
+        MSHookFunction((void*)(base + 0x724968E), (void*)&_hooked_Shoot, (void**)&_original_Shoot);
         
-        MSHookFunction((void*)(baseAddress + 0x724968E), 
-                       (void*)&_hooked_GetShootIntervalFromEntity, 
-                       (void**)&_original_GetShootIntervalFromEntity);
+        // O'q tezligi offset
+        MSHookFunction((void*)(base + 0x724866B), (void*)&_hooked_Bullet, (void**)&_original_Bullet);
+        
+        // ZARAR (Damage) offset - Rasmingizdagi 0x718F3A7
+        MSHookFunction((void*)(base + 0x718F3A7), (void*)&_hooked_Damage, (void**)&_original_Damage);
 
-        MSHookFunction((void*)(baseAddress + 0x724866B), 
-                       (void*)&_hooked_GetBulletFireSpeedFromEntity, 
-                       (void**)&_original_GetBulletFireSpeedFromEntity);
-
-        // UIAlertController xatosini (keyWindow deprecated) tuzatish:
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            UIWindow *window = nil;
-            if (@available(iOS 13.0, *)) {
-                for (UIWindowScene* windowScene in [UIApplication sharedApplication].connectedScenes) {
-                    if (windowScene.activationState == UISceneActivationStateForegroundActive) {
-                        for (UIWindow *w in windowScene.windows) {
-                            if (w.isKeyWindow) {
-                                window = w;
-                                break;
-                            }
-                        }
-                    }
-                }
-            } else {
-                window = [UIApplication sharedApplication].keyWindow;
-            }
-
-            if (window) {
-                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Tweak Active" 
-                                            message:@"PUBG Tweak muvaffaqiyatli ishga tushdi!" 
-                                            preferredStyle:UIAlertControllerStyleAlert];
-                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-                [window.rootViewController presentViewController:alert animated:YES completion:nil];
-            }
-        });
+        NSLog(@"[Tweak] PUBG High Damage + Fast Shoot yuklandi!");
     }
 }
