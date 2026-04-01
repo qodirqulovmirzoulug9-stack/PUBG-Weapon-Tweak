@@ -12,36 +12,36 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        [span_3](start_span)uses: actions/checkout@v4[span_3](end_span)
+        uses: actions/checkout@v4
 
       - name: Setup Theos
         run: |
-          [span_4](start_span)sudo xcode-select -s /Applications/Xcode.app/Contents/Developer[span_4](end_span)
-          export THEOS=/opt/theos
-          [span_5](start_span)sudo rm -rf $THEOS[span_5](end_span)
-          [span_6](start_span)sudo git clone --recursive https://github.com/theos/theos.git $THEOS[span_6](end_span)
-          [span_7](start_span)sudo chown -R $(id -u):$(id -g) $THEOS[span_7](end_span)
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          # Theosni o'rnatish
+          sudo rm -rf /opt/theos
+          sudo git clone --recursive https://github.com/theos/theos.git /opt/theos
+          sudo chown -R $(id -u):$(id -g) /opt/theos
+          
+          # O'zgaruvchilarni tizimga doimiy yozish
+          echo "THEOS=/opt/theos" >> $GITHUB_ENV
+          echo "/opt/theos/bin" >> $GITHUB_PATH
 
       - name: Setup SDK
         run: |
-          export THEOS=/opt/theos
-          [span_8](start_span)rm -rf $THEOS/sdks[span_8](end_span)
-          [span_9](start_span)git clone https://github.com/theos/sdks.git $THEOS/sdks[span_9](end_span)
+          # Bu yerda endi $THEOS o'zgaruvchisi ishlaydi
+          rm -rf ${{ env.THEOS }}/sdks
+          git clone https://github.com/theos/sdks.git ${{ env.THEOS }}/sdks
 
       - name: Build Tweak
         run: |
-          # Har bir 'run' qadamida THEOS yo'lini qayta ko'rsatish shart
-          [span_10](start_span)[span_11](start_span)export THEOS=/opt/theos[span_10](end_span)[span_11](end_span)
-          [span_12](start_span)export PATH=$THEOS/bin:$PATH[span_12](end_span)
-          
-          # Makefile va Tweak.x mavjudligini tekshirib, yig'ishni boshlash
-          [span_13](start_span)[span_14](start_span)make clean[span_13](end_span)[span_14](end_span)
-          [span_15](start_span)[span_16](start_span)make package FINALPACKAGE=1[span_15](end_span)[span_16](end_span)
+          # Makefile va Tweak.x orqali yig'ish
+          make clean
+          make package FINALPACKAGE=1
         env:
-          [span_17](start_span)THEOS_DEVICE_IP: ""[span_17](end_span)
+          THEOS_DEVICE_IP: ""
 
       - name: Upload Artifact
-        [span_18](start_span)uses: actions/upload-artifact@v4[span_18](end_span)
+        uses: actions/upload-artifact@v4
         with:
-          [span_19](start_span)name: PUBG-Weapon-Tweak[span_19](end_span)
-          [span_20](start_span)path: packages/*.deb[span_20](end_span)
+          name: PUBG-Weapon-Tweak
+          path: packages/*.deb
