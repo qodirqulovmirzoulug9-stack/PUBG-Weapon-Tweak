@@ -1,58 +1,81 @@
-name: build_tweak
+#import <Foundation/Foundation.h>
+#import <Substrate/Substrate.h>
+#import <mach-o/dyld.h>
+#import <UIKit/UIKit.h>
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+// O'yinning asosiy manzilini topish
+static uintptr_t _get_image_base_address() {
+    for (uint32_t i = 0; i < _dyld_image_count(); i++) {
+        const char* name = _dyld_get_image_name(i);
+        if (strstr(name, "ShadowTrackerExtra")) {
+            return (uintptr_t)_dyld_get_image_vmaddr_slide(i);
+        }
+    }
+    return 0;
+}
 
-env:
-  THEOS: /opt/theos
+// Original funksiyalar uchun pointerlar
+float (*_original_GetShootIntervalFromEntity)(id self, SEL _cmd);
+float (*_original_GetBulletFireSpeedFromEntity)(id self, SEL _cmd);
 
-jobs:
-  build:
-    runs-on: macos-latest
+// 1. O'q otish intervalini hook qilish (Tez otish)
+float _hooked_GetShootIntervalFromEntity(id self, SEL _cmd) {
+    if (_original_GetShootIntervalFromEntity) {
+        float originalInterval = _original_GetShootIntervalFromEntity(self, _cmd);
+        return originalInterval * 0.5f; 
+    }
+    return 0.05f;
+}
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+// 2. O'q uchish tezligini hook qilish
+float _hooked_GetBulletFireSpeedFromEntity(id self, SEL _cmd) {
+    if (_original_GetBulletFireSpeedFromEntity) {
+        float originalSpeed = _original_GetBulletFireSpeedFromEntity(self, _cmd);
+        return originalSpeed * 1.5f;
+    }
+    return 9999.0f;
+}
 
-      - name: Setup Theos
-        run: |
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-          sudo rm -rf ${{ env.THEOS }}
-          sudo git clone --recursive https://github.com/theos/theos.git ${{ env.THEOS }}
-          sudo chown -R $(id -u):$(id -g) ${{ env.THEOS }}
-          echo "THEOS=${{ env.THEOS }}" >> $GITHUB_ENV
-          echo "${{ env.THEOS }}/bin" >> $GITHUB_PATH
+%ctor {
+    uintptr_t baseAddress = _get_image_base_address();
+    
+    if (baseAddress != 0) {
+        // Siz yuborgan rasmdagi aniq offsetlar
+        MSHookFunction((void*)(baseAddress + 0x724968E), 
+                       (void*)&_hooked_GetShootIntervalFromEntity, 
+                       (void**)&_original_GetShootIntervalFromEntity);
 
-      - name: Install ldid
-        run: |
-          # ldid vositasini o'rnatish (signing uchun shart)
-          brew install ldid
+        MSHookFunction((void*)(baseAddress + 0x724866B), 
+                       (void*)&_hooked_GetBulletFireSpeedFromEntity, 
+                       (void**)&_original_GetBulletFireSpeedFromEntity);
 
-      - name: Setup SDK
-        run: |
-          rm -rf ${{ env.THEOS }}/sdks
-          git clone https://github.com/theos/sdks.git ${{ env.THEOS }}/sdks
+        // Bildirishnoma (Alert) chiqarish - Eng xavfsiz va xatosiz usul
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            UIViewController *rootVC = nil;
+            UIWindow *window = nil;
+            
+            if (@available(iOS 13.0, *)) {
+                for (UIScene* scene in [UIApplication sharedApplication].connectedScenes) {
+                    if (scene.activationState == UISceneActivationStateForegroundActive && [scene isKindOfClass:[UIWindowScene class]]) {
+                        window = ((UIWindowScene *)scene).windows.firstObject;
+                        break;
+                    }
+                }
+            }
+            
+            if (!window) {
+                window = [UIApplication sharedApplication].windows.firstObject;
+            }
+            
+            rootVC = window.rootViewController;
 
-      - name: Setup Substrate Header
-        run: |
-          mkdir -p ${{ env.THEOS }}/include/Substrate
-          curl -L https://raw.githubusercontent.com/theos/headers/master/CydiaSubstrate.h -o ${{ env.THEOS }}/include/Substrate/Substrate.h
-          cp ${{ env.THEOS }}/include/Substrate/Substrate.h ${{ env.THEOS }}/include/CydiaSubstrate.h
-
-      - name: Build Tweak
-        run: |
-          export THEOS=/opt/theos
-          export PATH=$THEOS/bin:$PATH
-          make clean
-          make package FINALPACKAGE=1
-        env:
-          THEOS_DEVICE_IP: ""
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PUBG-Weapon-Tweak-Package
-          path: packages/*.deb
+            if (rootVC) {
+                UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Tweak Holati" 
+                                            message:@"PUBG Tweak muvaffaqiyatli faollashtirildi!" 
+                                            preferredStyle:UIAlertControllerStyleAlert];
+                [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+                [rootVC presentViewController:alert animated:YES completion:nil];
+            }
+        });
+    }
+}
