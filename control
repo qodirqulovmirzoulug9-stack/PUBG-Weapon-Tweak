@@ -1,0 +1,9 @@
+Package: com.yourcompany.pubgweapontweak
+Name: PUBG Weapon Tweak
+Depends: mobilesubstrate
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: PUBG Mobile uchun qurol parametrlarini o'zgartiruvchi tweak.
+Maintainer: Your Name <your@email.com>
+Author: Your Name <your@email.com>
+Section: Tweaks
