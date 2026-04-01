@@ -23,7 +23,6 @@ jobs:
           sudo rm -rf ${{ env.THEOS }}
           sudo git clone --recursive https://github.com/theos/theos.git ${{ env.THEOS }}
           sudo chown -R $(id -u):$(id -g) ${{ env.THEOS }}
-          # O'zgaruvchilarni tizimga doimiy yozish
           echo "THEOS=${{ env.THEOS }}" >> $GITHUB_ENV
           echo "${{ env.THEOS }}/bin" >> $GITHUB_PATH
 
@@ -34,14 +33,6 @@ jobs:
 
       - name: Build Tweak
         run: |
-          # Makefile va Tweak.x orqali yig'ish
+          # Build qilishdan oldin hamma narsa joyidami tekshiramiz
           make clean
           make package FINALPACKAGE=1
-        env:
-          THEOS_DEVICE_IP: ""
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: PUBG-Weapon-Tweak-Package
-          path: packages/*.deb
